@@ -46,17 +46,18 @@ Aim:    data cleaning
 	ren 用户名 doc_account
 	ren 奖项 label
 	ren 年度好大夫科室 doc_dep_H_label
-	ren 姓名 doc_name
-	ren 医院 doc_hospital
-	ren 医院科室 doc_dep
+	ren 姓名 doc_name_label
+	ren 医院 doc_hospital_label
+	ren 医院科室 doc_dep_label
 	ren 职称 doc_title_label
-	ren 省 doc_province
-	ren 市 doc_city
+	ren 省 doc_province_label
+	ren 市 doc_city_label
 	ren 职务 doc_duty
 	save "$dta/doctor_label.dta", replace 
 	
 	** 2.3. match 
 	clear all
+	
 	* doctor_score_100.dta is our baseline sample (we have to have underlying score data) 
 	* Main variables: doc_account, name, hospital,dep_H，score, ranking
 	use "$temp/doctor_score_100.dta", clear  
@@ -64,72 +65,100 @@ Aim:    data cleaning
 	* adding other doc information using doctor_info.dta 
 	* (city, dep, gender, age, title, education, hospital_ranking, register)
 	* (hotindex, price1-4, hits)
-	merge 1:1 doc_account using "$dta/doctor_info.dta"
-	drop if _merge == 2
+	merge 1:1 doc_account using "$dta/doctor_info.dta", gen(merge_docinfo)
+	drop if merge_docinfo == 2
 		* check which physicians have missing doctor_info (7 missing, city, gender, age 其实都很好补全)
-		list doc_account doc_dep_H doc_name doc_hospital score rank if _merge == 1
+		list doc_account doc_dep_H doc_name doc_hospital score rank if merge_docinfo == 1
 		
 		* check doctor info variables 
-		tab doc_city if _merge == 3,m
-		tab doc_dep  if _merge == 3,m
+		tab doc_city if merge_docinfo == 3,m
+		tab doc_dep  if merge_docinfo == 3,m
 		
-		tab doc_gender if _merge == 3,m
-		list doc_account doc_dep_H doc_name doc_hospital rank if doc_gender == "" & _merge == 3
+		tab doc_gender if merge_docinfo == 3,m
+		list doc_account doc_dep_H doc_name doc_hospital rank if doc_gender == "" & merge_docinfo == 3
 		replace doc_gender =  "女" if doc_name == "单卫华" & doc_gender == ""
 		replace doc_gender =  "女" if doc_name == "刘嵘" & doc_gender == ""
 		replace doc_gender =  "男" if doc_name == "易甫" & doc_gender == ""
 		replace doc_gender =  "男" if doc_name == "贺建清" & doc_gender == ""
-		replace doc_gender = "女"  if doc_name == "康姚洁" & doc_gender == ""
-		replace doc_gender = "男" if doc_name == "魏林" & doc_gender == ""
-		replace doc_gender = "男" if doc_name == "丁翔" & doc_gender == ""
+		replace doc_gender =  "女" if doc_name == "康姚洁" & doc_gender == ""
+		replace doc_gender =  "男" if doc_name == "魏林" & doc_gender == ""
+		replace doc_gender =  "男" if doc_name == "丁翔" & doc_gender == ""
 		
-		codebook doc_age if _merge == 3 
+		codebook doc_age if merge_docinfo == 3 
 		hist doc_age 
-		list doc_age doc_account doc_name doc_dep doc_hospital rank if (doc_age >= 80 | doc_age <= 25) & _merge == 3
+		list doc_age doc_account doc_name doc_dep doc_hospital rank if (doc_age >= 70 | doc_age <= 25) & merge_docinfo == 3
+// 		replace doc_age ==  if doc_name == "徐凯峰"
+// 		replace doc_age ==  if doc_name == "柯珮琪"
+// 		replace doc_age ==  if doc_name == "纪尧峰"
+// 		replace doc_age ==  if doc_name == "穆玉兰"
+// 		replace doc_age ==  if doc_name == "刘卓炜"
+// 		replace doc_age ==  if doc_name == "张军"	
+
 		
-		tab doc_title if _merge == 3,m
-		list doc_account doc_dep_H doc_name doc_hospital rank doc_education if doc_title == "" & _merge == 3		
+		tab doc_title if merge_docinfo == 3,m
+		list doc_account doc_dep_H doc_name doc_hospital rank doc_education if doc_title == "" & merge_docinfo == 3		
 		
-		tab doc_education if _merge == 3,m 
+		tab doc_education if merge_docinfo == 3,m 
 		list doc_account doc_dep_H doc_name doc_hospital rank doc_title if doc_education == "" | doc_education == "未核实"
 		
-		codebook doc_register if _merge == 3
+		codebook doc_register if merge_docinfo == 3
 		
-		codebook doc_hotindex doc_price1 doc_price2 doc_price3 doc_price4 doc_hits if _merge == 3
+		codebook doc_hotindex doc_price1 doc_price2 doc_price3 doc_price4 doc_hits if merge_docinfo == 3
 		
-		
-		
-		
+	* adding doctor_lable.dta (394 = 304(年度好大夫) + 80(青年榜样) + 10(县域明星) )
+	merge 1:1 doc_account using "$dta/doctor_label.dta", gen(merge_doclabel) 
+	keep if merge_doclabel != 2	
+	
+	count if doc_name != doc_name_label & doc_name_label != ""
+	drop doc_name_label 
+	
+	count if doc_hospital != doc_hospital_label & doc_hospital_label != ""
+	list doc_name doc_dep doc_hospital doc_hospital_label if doc_hospital != doc_hospital_label & doc_hospital_label != ""
+	drop doc_hospital_label
+	
+	count if doc_dep != doc_dep_label & doc_dep_label != ""
+	list doc_name doc_hospital doc_dep doc_dep_label doc_dep_H doc_dep_H_label if doc_dep != doc_dep_label & doc_dep_label != ""
+	replace doc_dep = doc_dep_label if doc_dep_label != ""
+	drop doc_dep_label 
 
-		
-		
-		
-
-	
-	
-
-	
-	
-	
-	
-	merge 1:1 doc_account using "$dta/doctor_info.dta", keepusing(doc_title)
-	keep if _merge != 2
-	drop _merge
-	merge 1:1 doc_account using "$dta/doctor_label.dta", keepusing(label doc_title_label doc_dep_H_label)
-	keep if _merge != 2
-	drop _merge 
+	count if doc_title != doc_title_label & doc_title_label != ""
+	list doc_name doc_hospital doc_title doc_title_label if doc_title != doc_title_label & doc_title_label != ""
 	replace doc_title = doc_title_label if doc_title_label != ""
 	drop doc_title_label
+
+	count if doc_city != doc_city_label & doc_city_label != ""
+	list doc_name doc_hospital_label doc_dep doc_city doc_city_label if doc_city != doc_city_label & doc_city_label != ""
+	replace doc_city = doc_city_label if doc_city_label != ""
+	drop doc_city_label 
+	
+	count if doc_dep_H != doc_dep_H_label & doc_dep_H_label != ""
+	list doc_name doc_dep_H doc_dep_H_label if doc_dep_H != doc_dep_H_label & doc_dep_H_label != ""
 	replace doc_dep_H = doc_dep_H_label if doc_dep_H_label != ""
-	drop doc_dep_H_label
+	drop doc_dep_H_label	
+	
+	drop doc_province_label doc_duty 
+	
+	* standardize the department name 
 	replace doc_dep_H = "小儿外科" if doc_dep_H == "儿外科"
 	replace doc_dep_H = "小儿内科" if doc_dep_H == "儿内科"
 	replace doc_dep_H = "呼吸内科" if doc_dep_H == "呼吸科"
 	replace doc_dep_H = "感染传染科" if doc_dep_H == "感染内科"
+	
+	tab doc_dep_H, m
+	tab doc_dep_H if label == "年度好大夫", m
+	tab doc_dep_H if label == "青年榜样", m	
+	tab doc_dep_H if label == "县域明星", m
+	
+	save "$dta/doctor_with_label.dta", replace 
+
+	
+	
+	
+		
 	frame put if regexm(doc_title, "主任") == 1, into(senior_doctor)  // 年度好大夫评选范围：副主任医师及以上
-	*frame put if regexm(doc_title, "主任") != 1, into(youth_doctor)
 
 		frame change senior_doctor
+
 		drop if doc_dep_H == "/" | doc_dep_H == "其他" 
 		drop if doc_dep_H == "辅助诊断科" | doc_dep_H == "放射治疗科"
 		tab doc_dep_H if label == "年度好大夫"
@@ -137,6 +166,8 @@ Aim:    data cleaning
 		drop rank 
 		bys doc_dep_H: gen rank = _n
 
+		
+	
 		merge 1:1 doc_account using "$temp/doctor_id_username.dta", gen(merge1) keepusing(space_id1)
 		drop if merge1 == 2
 		merge 1:1 doc_account using "$temp/doctor_id_username_new.dta", gen(merge2) keepusing(space_id)
@@ -209,14 +240,6 @@ Aim:    data cleaning
 		encode doc_gender, gen(doc_gender_code)
 		drop doc_gender
 		ren doc_gender_code doc_gender
-		replace doc_gender =  1 if doc_name == "单卫华" & doc_gender == .
-		replace doc_gender =  1 if doc_name == "刘嵘" & doc_gender == .
-		replace doc_gender =  2 if doc_name == "易甫" & doc_gender == .
-		replace doc_gender =  2 if doc_name == "贺建清" & doc_gender == .
-		
-		replace doc_gender = 2 if doc_name == "魏林" & doc_gender == .
-		replace doc_gender = 2 if doc_name == "丁翔" & doc_gender == .
-		tab doc_gender,m
 		gen doc_male = cond(doc_gender == 2,1,0)
 		
 		gen doc_reg_year = substr(doc_register,1,4)
@@ -241,6 +264,12 @@ Aim:    data cleaning
 		
 		save "$dta/senior_doctor_with_label.dta", replace // this is the doctor pools that we select sample from
 }
+
+
+
+
+
+
 
 
 {/*** 3. transaction level data of top tail doctors ***/
